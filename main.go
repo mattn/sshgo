@@ -25,6 +25,7 @@ var (
 	askPassword = flag.Bool("w", false, "ask password")
 	privateKey  = flag.String("f", "", "private key")
 	port        = flag.Int("P", 22, "port")
+	timeout     = flag.Duration("T", 0*time.Second, "timeout")
 )
 
 func pprompt(prompt string) (string, error) {
@@ -109,9 +110,8 @@ func run() int {
 	}
 
 	config := &ssh.ClientConfig{
-		User:    *user,
-		Auth:    authMethods,
-		Timeout: 5 * time.Second,
+		User: *user,
+		Auth: authMethods,
 	}
 
 	hostport := fmt.Sprintf("%s:%d", flag.Arg(0), *port)
@@ -129,14 +129,21 @@ func run() int {
 	}
 	defer session.Close()
 
-	go func() {
-		time.Sleep(5 * time.Second)
-		conn.Close()
-	}()
+	if *timeout > 0 {
+		go func() {
+			time.Sleep(*timeout)
+			conn.Close()
+		}()
+	}
 
 	session.Stdout = colorable.NewColorableStdout()
 	session.Stderr = colorable.NewColorableStderr()
 	session.Stdin = os.Stdin
+	err = session.RequestPty("xterm", 25, 80, ssh.TerminalModes{})
+	if err != nil {
+		fmt.Fprint(os.Stderr, err)
+		return 1
+	}
 	err = session.Run(strings.Join(flag.Args()[1:], " "))
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
