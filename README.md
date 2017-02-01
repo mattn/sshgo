@@ -18,7 +18,7 @@ Usage of sshgo:
 
 ## Warning
 
-Be careful to use this. The command-line arguments with passing password/passphrase is dangerous. Anyone can steel your password.
+Be careful to use this. The command-line arguments with passing password/passphrase is dangerous. Anyone can steal your password.
 
 ## Installation
 
