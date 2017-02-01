@@ -38,10 +38,6 @@ func getSigner(keyPath string) (key ssh.Signer, err error) {
 	}
 
 	b, _ := pem.Decode(buf)
-	if err != nil {
-		return nil, err
-	}
-
 	if x509.IsEncryptedPEMBlock(b) {
 		buf, err = x509.DecryptPEMBlock(b, []byte(*password))
 		if err != nil {
