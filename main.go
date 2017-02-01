@@ -6,7 +6,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -35,12 +34,12 @@ func getSigner(keyPath string) (key ssh.Signer, err error) {
 	}
 	buf, err := ioutil.ReadFile(keyPath)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	b, _ := pem.Decode(buf)
 	if err != nil {
-		log.Fatal(err)
+		return nil, err
 	}
 
 	if x509.IsEncryptedPEMBlock(b) {
@@ -78,7 +77,8 @@ func run() int {
 	if *privateKey != "" {
 		signer, err := getSigner(*privateKey)
 		if err != nil {
-			log.Fatal(err)
+			fmt.Fprintln(os.Stderr, err)
+			return 1
 		}
 		authMethods = append(authMethods, ssh.PublicKeys(signer))
 	}
