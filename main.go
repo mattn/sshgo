@@ -5,8 +5,10 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -26,6 +28,7 @@ var (
 	privateKey  = flag.String("f", "", "private key")
 	port        = flag.Int("P", 22, "port")
 	timeout     = flag.Duration("T", 0*time.Second, "timeout")
+	openPTY     = flag.Bool("o", false, "open pty")
 )
 
 func pprompt(prompt string) (string, error) {
@@ -138,13 +141,39 @@ func run() int {
 
 	session.Stdout = colorable.NewColorableStdout()
 	session.Stderr = colorable.NewColorableStderr()
-	session.Stdin = os.Stdin
-	err = session.RequestPty("xterm", 25, 80, ssh.TerminalModes{})
-	if err != nil {
-		fmt.Fprint(os.Stderr, err)
-		return 1
+	if *openPTY {
+		w, err := session.StdinPipe()
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot create pipe: %v\n", err)
+			return 1
+		}
+		if *openPTY {
+			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{
+				ssh.ECHO:  0,
+				ssh.IGNCR: 1,
+			})
+			if err != nil {
+				fmt.Fprint(os.Stderr, err)
+				return 1
+			}
+		}
+		c := make(chan os.Signal, 10)
+		defer close(c)
+		signal.Notify(c, os.Interrupt)
+		go func() {
+			for {
+				if _, ok := <-c; !ok {
+					break
+				}
+				session.Signal(ssh.SIGINT)
+			}
+		}()
+		err = session.Shell()
+		io.Copy(w, os.Stdin)
+	} else {
+		session.Stdin = os.Stdin
+		err = session.Run(strings.Join(flag.Args()[1:], " "))
 	}
-	err = session.Run(strings.Join(flag.Args()[1:], " "))
 	if err != nil {
 		fmt.Fprint(os.Stderr, err)
 		if ee, ok := err.(*ssh.ExitError); ok {
