@@ -2,7 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -161,7 +160,6 @@ func run() int {
 			return 1
 		}
 		defer resp.Body.Close()
-		tcp = tls.Client(tcp, &tls.Config{InsecureSkipVerify: true})
 
 		c, chans, reqs, err := ssh.NewClientConn(tcp, hostport, config)
 		if err != nil {
