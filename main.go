@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"crypto/tls"
 	"crypto/x509"
 	"encoding/pem"
 	"flag"
@@ -8,6 +10,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net"
+	"net/http"
+	"net/url"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -29,6 +33,7 @@ var (
 	askPassword = flag.Bool("w", false, "ask password")
 	privateKey  = flag.String("f", "", "private key")
 	port        = flag.Int("P", 22, "port")
+	proxy       = flag.String("x", "", "proxy server")
 	timeout     = flag.Duration("T", 0*time.Second, "timeout")
 	openPTY     = flag.Bool("o", false, "open pty")
 )
@@ -122,12 +127,52 @@ func run() int {
 	}
 
 	config := &ssh.ClientConfig{
-		User: *user,
-		Auth: authMethods,
+		User:    *user,
+		Auth:    authMethods,
+		Timeout: 10 * time.Second,
 	}
 
 	hostport := fmt.Sprintf("%s:%d", flag.Arg(0), *port)
-	conn, err := ssh.Dial("tcp", hostport, config)
+
+	var conn *ssh.Client
+	var err error
+
+	if *proxy != "" {
+		proxy_url, err := url.Parse(*proxy)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
+			return 1
+		}
+		tcp, err := net.Dial("tcp", proxy_url.Host)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
+			return 1
+		}
+		connReq := &http.Request{
+			Method: "CONNECT",
+			URL:    &url.URL{Path: hostport},
+			Host:   hostport,
+			Header: make(http.Header),
+		}
+		connReq.Write(tcp)
+		resp, err := http.ReadResponse(bufio.NewReader(tcp), connReq)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
+			return 1
+		}
+		defer resp.Body.Close()
+		tcp = tls.Client(tcp, &tls.Config{InsecureSkipVerify: true})
+
+		c, chans, reqs, err := ssh.NewClientConn(tcp, hostport, config)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
+			return 1
+		}
+		conn = ssh.NewClient(c, chans, reqs)
+	} else {
+		conn, err = ssh.Dial("tcp", hostport, config)
+	}
+
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cannot connect %v: %v\n", hostport, err)
 		return 1
