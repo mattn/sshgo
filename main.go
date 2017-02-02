@@ -44,7 +44,7 @@ func pprompt(prompt string) (string, error) {
 	}
 	defer t.Close()
 	fmt.Print(prompt)
-	return t.ReadPassword()
+	return t.ReadPasswordClear()
 }
 
 func getSigners(keyfile string, password string) ([]ssh.Signer, error) {
