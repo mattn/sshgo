@@ -139,9 +139,9 @@ func run() int {
 		}()
 	}
 
-	session.Stdout = colorable.NewColorableStdout()
-	session.Stderr = colorable.NewColorableStderr()
 	if *openPTY {
+		session.Stdout = colorable.NewColorableStdout()
+		session.Stderr = colorable.NewColorableStderr()
 		w, err := session.StdinPipe()
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cannot create pipe: %v\n", err)
@@ -171,6 +171,8 @@ func run() int {
 		err = session.Shell()
 		io.Copy(w, os.Stdin)
 	} else {
+		session.Stdout = os.Stdout
+		session.Stderr = os.Stderr
 		session.Stdin = os.Stdin
 		err = session.Run(strings.Join(flag.Args()[1:], " "))
 	}
