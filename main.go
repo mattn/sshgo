@@ -115,7 +115,7 @@ func run() int {
 	if *privateKey != "" {
 		authMethods = append(authMethods, ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
 			if *askPassword {
-				p, err := pprompt("password: ")
+				p, err := pprompt("passphrase: ")
 				if err != nil {
 					return nil, err
 				}
