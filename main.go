@@ -42,6 +42,7 @@ func pprompt(prompt string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer t.Close()
 	fmt.Print(prompt)
 	return t.ReadPassword()
 }
