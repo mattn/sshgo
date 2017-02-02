@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"net"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -19,6 +20,7 @@ import (
 	"github.com/mitchellh/go-homedir"
 
 	"golang.org/x/crypto/ssh"
+	"golang.org/x/crypto/ssh/agent"
 )
 
 var (
@@ -93,6 +95,13 @@ func run() int {
 
 	var authMethods []ssh.AuthMethod
 
+	sshsock := os.ExpandEnv("$SSH_AUTH_SOCK")
+	if sshsock != "" {
+		addr, _ := net.ResolveUnixAddr("unix", sshsock)
+		agentConn, _ := net.DialUnix("unix", nil, addr)
+		ag := agent.NewClient(agentConn)
+		authMethods = append(authMethods, ssh.PublicKeysCallback(ag.Signers))
+	}
 	authMethods = append(authMethods, ssh.PasswordCallback(func() (string, error) {
 		if *askPassword {
 			return pprompt("password: ")
