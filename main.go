@@ -140,12 +140,12 @@ func run() int {
 	var err error
 
 	if *proxy != "" {
-		proxy_url, err := url.Parse(*proxy)
+		proxyUrl, err := url.Parse(*proxy)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
 			return 1
 		}
-		tcp, err := net.Dial("tcp", proxy_url.Host)
+		tcp, err := net.Dial("tcp", proxyUrl.Host)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
 			return 1
@@ -155,6 +155,11 @@ func run() int {
 			URL:    &url.URL{Path: hostport},
 			Host:   hostport,
 			Header: make(http.Header),
+		}
+		if proxyUrl.User != nil {
+			if p, ok := proxyUrl.User.Password(); ok {
+				connReq.SetBasicAuth(proxyUrl.User.Username(), p)
+			}
 		}
 		connReq.Write(tcp)
 		resp, err := http.ReadResponse(bufio.NewReader(tcp), connReq)
