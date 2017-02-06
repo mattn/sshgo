@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/mattn/go-colorable"
+	"github.com/mattn/go-runewidth"
 	"github.com/mattn/go-tty"
 	"github.com/mitchellh/go-homedir"
 
@@ -44,6 +45,7 @@ func pprompt(prompt string) (string, error) {
 	}
 	defer t.Close()
 	fmt.Print(prompt)
+	defer t.Output().WriteString("\r" + strings.Repeat(" ", runewidth.StringWidth(prompt)) + "\r")
 	return t.ReadPasswordClear()
 }
 
