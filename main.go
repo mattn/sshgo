@@ -129,9 +129,10 @@ func run() int {
 	}
 
 	config := &ssh.ClientConfig{
-		User:    *user,
-		Auth:    authMethods,
-		Timeout: 10 * time.Second,
+		User:            *user,
+		Auth:            authMethods,
+		Timeout:         10 * time.Second,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	hostport := fmt.Sprintf("%s:%d", flag.Arg(0), *port)
