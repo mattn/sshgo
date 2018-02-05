@@ -26,6 +26,7 @@ import (
 
 	"golang.org/x/crypto/ssh"
 	"golang.org/x/crypto/ssh/agent"
+	"golang.org/x/crypto/ssh/terminal"
 )
 
 var (
@@ -92,6 +93,8 @@ func run() int {
 			return 1
 		}
 		*privateKey = filepath.Join(home, ".ssh", "id_rsa")
+	} else if *privateKey == "none" {
+		*privateKey = ""
 	}
 
 	host := flag.Arg(0)
@@ -223,6 +226,13 @@ func run() int {
 	}
 
 	if *openPTY {
+		st, err := terminal.MakeRaw(int(os.Stdin.Fd()))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "cannot open new session: %v\n", err)
+			return 1
+		}
+		defer terminal.Restore(int(os.Stdin.Fd()), st)
+
 		session.Stdout = colorable.NewColorableStdout()
 		session.Stderr = colorable.NewColorableStderr()
 		w, err := session.StdinPipe()
@@ -231,12 +241,7 @@ func run() int {
 			return 1
 		}
 		if *openPTY {
-			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{
-				ssh.ECHO:  0,
-				ssh.IGNCR: 1,
-				ssh.VEOL:  1,
-				ssh.ISIG:  1,
-			})
+			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{})
 			if err != nil {
 				fmt.Fprint(os.Stderr, err)
 				return 1
