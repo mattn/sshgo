@@ -228,8 +228,8 @@ func run() int {
 		}
 		if *openPTY {
 			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{
-				ssh.ECHO:  1,
-				ssh.IGNCR: 0,
+				ssh.ECHO:  0,
+				ssh.IGNCR: 1,
 			})
 			if err != nil {
 				fmt.Fprint(os.Stderr, err)
