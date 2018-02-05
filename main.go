@@ -118,6 +118,10 @@ func run() int {
 		}
 	}
 
+	if flag.NArg() == 1 {
+		*openPTY = true
+	}
+
 	var authMethods []ssh.AuthMethod
 
 	sshsock := os.ExpandEnv("$SSH_AUTH_SOCK")
@@ -230,6 +234,8 @@ func run() int {
 			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{
 				ssh.ECHO:  0,
 				ssh.IGNCR: 1,
+				ssh.VEOL:  1,
+				ssh.ISIG:  1,
 			})
 			if err != nil {
 				fmt.Fprint(os.Stderr, err)
