@@ -15,6 +15,7 @@ import (
 	"os/signal"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"time"
 
@@ -92,11 +93,28 @@ func run() int {
 		}
 		*privateKey = filepath.Join(home, ".ssh", "id_rsa")
 	}
+
+	host := flag.Arg(0)
 	if *user == "" {
-		if runtime.GOOS == "windows" {
-			*user = os.Getenv("USERNAME")
+		if strings.Contains(host, "@") {
+			tok := strings.Split(host, "@")
+			if len(tok) != 2 {
+				fmt.Fprintln(os.Stderr, "invalid hostname")
+				return 1
+			}
+			*user, host = tok[0], tok[1]
+			if h, p, err := net.SplitHostPort(host); err == nil {
+				host = h
+				if pn, err := strconv.ParseUint(p, 10, 64); err == nil {
+					*port = int(pn)
+				}
+			}
 		} else {
-			*user = os.Getenv("USER")
+			if runtime.GOOS == "windows" {
+				*user = os.Getenv("USERNAME")
+			} else {
+				*user = os.Getenv("USER")
+			}
 		}
 	}
 
@@ -135,7 +153,7 @@ func run() int {
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
-	hostport := fmt.Sprintf("%s:%d", flag.Arg(0), *port)
+	hostport := fmt.Sprintf("%s:%d", host, *port)
 
 	var conn *ssh.Client
 	var err error
@@ -210,8 +228,8 @@ func run() int {
 		}
 		if *openPTY {
 			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{
-				ssh.ECHO:  0,
-				ssh.IGNCR: 1,
+				ssh.ECHO:  1,
+				ssh.IGNCR: 0,
 			})
 			if err != nil {
 				fmt.Fprint(os.Stderr, err)
@@ -230,7 +248,8 @@ func run() int {
 			}
 		}()
 		err = session.Shell()
-		io.Copy(w, os.Stdin)
+		go io.Copy(w, os.Stdin)
+		session.Wait()
 	} else {
 		session.Stdout = os.Stdout
 		session.Stderr = os.Stderr
