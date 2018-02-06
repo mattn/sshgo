@@ -6,7 +6,6 @@ import (
 	"encoding/pem"
 	"flag"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -233,13 +232,9 @@ func run() int {
 		}
 		defer terminal.Restore(int(os.Stdin.Fd()), st)
 
+		session.Stdin = os.Stdin
 		session.Stdout = colorable.NewColorableStdout()
 		session.Stderr = colorable.NewColorableStderr()
-		w, err := session.StdinPipe()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "cannot create pipe: %v\n", err)
-			return 1
-		}
 		if *openPTY {
 			err = session.RequestPty("vt100", 25, 80, ssh.TerminalModes{})
 			if err != nil {
@@ -259,7 +254,6 @@ func run() int {
 			}
 		}()
 		err = session.Shell()
-		go io.Copy(w, os.Stdin)
 		session.Wait()
 	} else {
 		session.Stdout = os.Stdout
