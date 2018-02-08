@@ -155,7 +155,7 @@ func run() int {
 	config := &ssh.ClientConfig{
 		User:            *user,
 		Auth:            authMethods,
-		Timeout:         10 * time.Second,
+		Timeout:         *timeout,
 		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
@@ -256,9 +256,9 @@ func run() int {
 		err = session.Shell()
 		session.Wait()
 	} else {
+		session.Stdin = os.Stdin
 		session.Stdout = os.Stdout
 		session.Stderr = os.Stderr
-		session.Stdin = os.Stdin
 		err = session.Run(strings.Join(flag.Args()[1:], " "))
 	}
 	if err != nil {
