@@ -85,16 +85,6 @@ func run() int {
 		flag.Usage()
 		return 2
 	}
-	if *privateKey == "" {
-		home, err := homedir.Dir()
-		if err != nil {
-			fmt.Fprintln(os.Stderr, err)
-			return 1
-		}
-		*privateKey = filepath.Join(home, ".ssh", "id_rsa")
-	} else if *privateKey == "none" {
-		*privateKey = ""
-	}
 
 	host := flag.Arg(0)
 	if *user == "" {
@@ -126,20 +116,50 @@ func run() int {
 
 	var authMethods []ssh.AuthMethod
 
-	sshsock := os.ExpandEnv("$SSH_AUTH_SOCK")
-	if sshsock != "" {
-		addr, _ := net.ResolveUnixAddr("unix", sshsock)
-		agentConn, _ := net.DialUnix("unix", nil, addr)
-		ag := agent.NewClient(agentConn)
-		authMethods = append(authMethods, ssh.PublicKeysCallback(ag.Signers))
+	if *askPassword || *password != "" {
+		authMethods = append(authMethods, ssh.PasswordCallback(func() (string, error) {
+			if *askPassword {
+				return pprompt("password: ")
+			}
+			return *password, nil
+		}))
 	}
-	authMethods = append(authMethods, ssh.PasswordCallback(func() (string, error) {
-		if *askPassword {
-			return pprompt("password: ")
+
+	if *privateKey == "" || *privateKey == "none" {
+		sshsock := os.ExpandEnv("$SSH_AUTH_SOCK")
+		if sshsock != "" {
+			addr, _ := net.ResolveUnixAddr("unix", sshsock)
+			agentConn, _ := net.DialUnix("unix", nil, addr)
+			ag := agent.NewClient(agentConn)
+			keys, err := ag.List()
+			if err != nil {
+				fmt.Fprintln(os.Stderr, err)
+				return 1
+			}
+			if len(keys) != 0 {
+				authMethods = append(authMethods, ssh.PublicKeysCallback(ag.Signers))
+			}
 		}
-		return *password, nil
-	}))
+	}
+
+	if *privateKey == "" {
+		home, err := homedir.Dir()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
+		*privateKey = filepath.Join(home, ".ssh", "id_rsa")
+	}
+	if *privateKey == "none" {
+		*privateKey = ""
+	}
+
 	if *privateKey != "" {
+		_, err := os.Stat(*privateKey)
+		if len(authMethods) == 0 && os.IsNotExist(err) {
+			fmt.Fprintf(os.Stderr, "No such private key file: %s\n", *privateKey)
+			return 1
+		}
 		authMethods = append(authMethods, ssh.PublicKeysCallback(func() ([]ssh.Signer, error) {
 			if *askPassword {
 				p, err := pprompt("passphrase: ")
