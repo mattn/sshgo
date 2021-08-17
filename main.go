@@ -136,7 +136,7 @@ func run() int {
 				fmt.Fprintln(os.Stderr, err)
 				return 1
 			}
-			if len(keys) != 0 {
+			if len(keys) > 0 {
 				authMethods = append(authMethods, ssh.PublicKeysCallback(ag.Signers))
 			}
 		}
