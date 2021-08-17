@@ -2,8 +2,6 @@ package main
 
 import (
 	"bufio"
-	"crypto/x509"
-	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -56,22 +54,14 @@ func getSigners(keyfile string, password string) ([]ssh.Signer, error) {
 		return nil, err
 	}
 
-	b, _ := pem.Decode(buf)
-	if x509.IsEncryptedPEMBlock(b) {
-		buf, err = x509.DecryptPEMBlock(b, []byte(password))
-		if err != nil {
-			return nil, err
-		}
-		pk, err := x509.ParsePKCS1PrivateKey(buf)
-		if err != nil {
-			return nil, err
-		}
-		k, err := ssh.NewSignerFromKey(pk)
+	if password != "" {
+		k, err := ssh.ParsePrivateKeyWithPassphrase(buf, []byte(password))
 		if err != nil {
 			return nil, err
 		}
 		return []ssh.Signer{k}, nil
 	}
+
 	k, err := ssh.ParsePrivateKey(buf)
 	if err != nil {
 		return nil, err
