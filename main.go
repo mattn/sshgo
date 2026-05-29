@@ -18,7 +18,7 @@ import (
 
 	"github.com/mattn/go-colorable"
 	"github.com/mattn/go-runewidth"
-	"github.com/mattn/go-tty"
+	"github.com/mattn/go-tty/v2"
 	"github.com/mitchellh/go-homedir"
 
 	"golang.org/x/crypto/ssh"
